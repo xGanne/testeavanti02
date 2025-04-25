@@ -39,7 +39,7 @@ A aplicação implementa os seguintes requisitos definidos no enunciado:
 
 ## 🖼️ Visual (Exemplo)
 
-![\[Exemplo\]](https://cdn.imgchest.com/files/yrgcnwremg4.png)
+![\[Exemplo\]](https://cdn.imgchest.com/files/yrgcnwpg5q4.png)
 
 ## 💻 Tecnologias Utilizadas
 
