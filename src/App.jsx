@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './App.css';
 import githubLogo from './assets/github-logo.svg';
+import searchIcon from './assets/search-icon.svg';
 
 function App() {
   const [username, setUsername] = useState('');
@@ -8,33 +9,65 @@ function App() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const errorMessages = {
+    notFound: 'Nenhum perfil foi encontrado com ese nome de usuário.',
+    tryAgain: 'Tente novamente',
+    generic: 'Erro ao buscar perfil.',
+  };
+
   const handleSearch = async (e) => {
     e.preventDefault();
-    
-    if (!username.trim()) return;
-    
+    const trimmedUsername = username.trim();
+
+    if (!trimmedUsername) return;
+
     setLoading(true);
     setError(null);
     setUser(null);
-    
+
     try {
-      const response = await fetch(`https://api.github.com/users/${username}`);
-      
+      const response = await fetch(`https://api.github.com/users/${trimmedUsername}`);
+
       if (!response.ok) {
-        throw new Error(
-          response.status === 404 
-            ? 'Usuário não encontrado' 
-            : 'Erro ao buscar perfil'
+        setError(
+          response.status === 404
+            ? `${errorMessages.notFound} ${errorMessages.tryAgain}`
+            : `${errorMessages.generic} (Status: ${response.status})`
         );
+        throw new Error(`API Error ${response.status}`);
       }
-      
+
       const data = await response.json();
-      setUser(data);
-    } catch (error) {
-      setError(error.message);
+
+      setUser({
+        name: data.name || data.login,
+        avatar_url: data.avatar_url,
+        bio: data.bio,
+      });
+
+    } catch (fetchError) {
+      console.error("GitHub API Fetch Error:", fetchError);
+      if (!error) {
+        setError(errorMessages.generic);
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const renderErrorMessage = () => {
+    if (!error) return null;
+
+    if (error.includes(errorMessages.notFound) && error.includes(errorMessages.tryAgain)) {
+      return (
+        <>
+          <p className="error-message">{errorMessages.notFound}</p>
+          <p className="error-message">{errorMessages.tryAgain}</p>
+        </>
+      );
+    }
+
+    return <p className="error-message">{error}</p>;
   };
 
   return (
@@ -42,88 +75,62 @@ function App() {
       <div className="container">
         <header className="header">
           <img src={githubLogo} alt="GitHub Logo" className="github-logo" />
-          <h1 className="title">Perfil GitHub</h1>
+          <div className="title-container">
+             <h1>
+                <span className="title-perfil">Perfil</span>
+                <span className="title-github">GitHub</span>
+             </h1>
+          </div>
         </header>
-        
+
         <form onSubmit={handleSearch} className="search-form">
           <input
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="Nickname"
+            placeholder="Digite um usuário do Github"
             className="search-input"
             aria-label="Nome do usuário GitHub"
+            disabled={loading}
           />
-          <button type="submit" className="search-button" disabled={loading}>
+          <button
+            type="submit"
+            className="search-button"
+            disabled={loading || !username.trim()}
+          >
             {loading ? (
               <span className="loading-spinner"></span>
             ) : (
-              <span className="search-icon">🔍</span>
+              <img src={searchIcon} alt="Buscar" className="search-icon-svg" />
             )}
           </button>
         </form>
-        
-        {loading && (
-          <div className="loading-container">
-            <div className="loading-spinner large"></div>
-            <p>Buscando perfil...</p>
-          </div>
-        )}
-        
-        {error && (
-          <div className="error-container">
-            <p className="error-message">{error}</p>
-          </div>
-        )}
-        
-        {user && (
-          <div className="profile-card">
-            <div className="profile-header">
+
+        <div className="result-area">
+          {error && !loading && (
+            <div className="error-display">
+              {renderErrorMessage()}
+            </div>
+          )}
+
+          {user && !loading && !error && (
+            <div className="user-profile">
               <div className="profile-image-container">
-                <img src={user.avatar_url} alt={`${user.login} avatar`} className="profile-image" />
+                <img
+                  src={user.avatar_url}
+                  alt={`Avatar de ${user.name}`}
+                  className="profile-image"
+                />
               </div>
-              
-              <h2 className="profile-name">
-                <a href={user.html_url} target="_blank" rel="noopener noreferrer">
-                  {user.name || user.login}
-                </a>
-              </h2>
-            </div>
-            
-            {user.bio && (
-              <p className="profile-bio">{user.bio}</p>
-            )}
-            
-            <div className="profile-stats">
-              <div className="stat">
-                <span className="stat-value">{user.followers}</span>
-                <span className="stat-label">Seguidores</span>
-              </div>
-              <div className="stat">
-                <span className="stat-value">{user.following}</span>
-                <span className="stat-label">Seguindo</span>
-              </div>
-              <div className="stat">
-                <span className="stat-value">{user.public_repos}</span>
-                <span className="stat-label">Repos</span>
+              <div className="profile-info">
+                 <h2 className="profile-name">{user.name}</h2>
+                 {user.bio && (
+                   <p className="profile-bio">{user.bio} 🚀</p>
+                 )}
               </div>
             </div>
-            
-            {user.location && (
-              <p className="profile-location">📍 {user.location}</p>
-            )}
-            
-            {user.blog && (
-              <p className="profile-website">
-                <a href={user.blog.startsWith('http') ? user.blog : `https://${user.blog}`} 
-                   target="_blank" 
-                   rel="noopener noreferrer">
-                  🔗 Website
-                </a>
-              </p>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
